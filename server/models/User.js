@@ -7,6 +7,7 @@ import mongoose from "mongoose";
     password:{type:String, required:true,minlength:6},
     profilePic:{type:String, default:""},
     bio:{type:String},
+    hiddenUsers: [{type: mongoose.Schema.Types.ObjectId, ref: "User"}],
 
  },{timestamps:true});
 

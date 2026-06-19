@@ -2,11 +2,15 @@ import Message from "../models/message.js"
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js"
 import {io,userSocketMap} from "../server.js"
-//  get all users except the logged in user
+//  get all users except the logged in user (and hidden ones)
 export const getUsersForSidebar = async(req,res)=>{
     try{
        const userId = req.user._id;
-       const filteredUsers = await User.find({_id:{$ne:userId}}).select("-password");
+       const currentUser = await User.findById(userId);
+       const hiddenUsers = currentUser.hiddenUsers || [];
+       const filteredUsers = await User.find({
+           _id: { $ne: userId, $nin: hiddenUsers }
+       }).select("-password");
 
     //    count no if messages not seen
     const unseenMessages = {}
@@ -117,5 +121,30 @@ export const sendMessage = async (req,res) => {
     res.json({
         success:false , message:error.message
     })
+    }
+}
+
+// Hide a user from the sidebar feed
+export const hideUser = async (req, res) => {
+    try {
+        const { id: userToHideId } = req.params;
+        const myId = req.user._id;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            myId,
+            { $addToSet: { hiddenUsers: userToHideId } },
+            { new: true }
+        ).select("-password");
+
+        res.json({
+            success: true,
+            user: updatedUser
+        });
+    } catch (error) {
+        console.log(error.message);
+        res.json({
+            success: false,
+            message: error.message
+        });
     }
 }

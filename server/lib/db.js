@@ -6,7 +6,9 @@ export const connectDB = async () =>{
     try{
 
       mongoose.connection.on('connected',()=>console.log('Database Connected'));
-        await mongoose.connect(`${process.env.MONGODB_URL}/ChatApp`)
+      const url = process.env.MONGODB_URL;
+      const uri = url.includes('?') ? url.replace('/?', '/ChatApp?') : `${url}/ChatApp`;
+      await mongoose.connect(uri)
     } catch (error) {
          console.log(error);
     }
