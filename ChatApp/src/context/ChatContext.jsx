@@ -56,6 +56,23 @@ export const ChatProvider = ({children})=>{
        }
     }
 
+    const hideUserFromFeed = async (userId) => {
+        try {
+            const { data } = await axios.put(`/api/messages/hide/${userId}`);
+            if (data.success) {
+                setUsers(prev => prev.filter(u => u._id !== userId));
+                if (selectedUser && selectedUser._id === userId) {
+                    setSelectedUser(null);
+                }
+                toast.success("User removed from feed");
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
     // function to subsribe to messages for selected user
 const subscribeToMessages =  () =>{
     if(!socket) return;
@@ -89,7 +106,7 @@ useEffect(()=>{
 
     const value = {
         messages,users,selectedUser,getUsers,getMessages,sendMessage,setSelectedUser,
-        unseenMessages,setUnseenMessages
+        unseenMessages,setUnseenMessages,hideUserFromFeed
     }
     return (<ChatContext.Provider value={value}>
          {children}

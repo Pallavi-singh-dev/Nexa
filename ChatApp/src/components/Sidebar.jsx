@@ -6,7 +6,7 @@ import { ChatContext } from '../context/ChatContext';
 
 
 const Sidebar = () => {
-     const {getUsers,users,selectedUser,setSelectedUser,unseenMessages,setUnseenMessages}=useContext(ChatContext)
+     const {getUsers,users,selectedUser,setSelectedUser,unseenMessages,setUnseenMessages,hideUserFromFeed}=useContext(ChatContext)
     const {logout,onlineUsers,authUser} = useContext(AuthContext)
       const[input,setInput]=useState(false);
 // for new page
@@ -56,25 +56,36 @@ const Sidebar = () => {
         <div className='flex flex-col      '>
           {filteredUsers.map((user,index)=>(
             <div onClick={()=>{setSelectedUser(user)}}
-            key={index} className={`relative flex items-center
+            key={index} className={`relative flex items-center justify-between
              gap-2 p-2 px-4 rounded cursor-pointer max-sm:text-sm ${selectedUser?._id === user._id && 
              'bg-[#282142]/50'}`}> 
-              <img src={user?.profilePic|| assets.avatar_icon} alt="" 
-              className='w-[35px] aspect-[1/1] rounded-full'/>
-              <div className='flex flex-col leading-5'>
+              <div className='flex items-center gap-3'>
+                <img src={user?.profilePic|| assets.avatar_icon} alt="" 
+                className='w-[35px] aspect-[1/1] rounded-full'/>
+                <div className='flex flex-col leading-5'>
 
-<p> {user.fullName}</p>
-{
-    onlineUsers.includes(user._id)
-    ? <span className='text-green-400 text-xs'>
-        Online
-    </span> : <span className='text-neutral-400 text-xs'> Offline</span>
-}
+  <p> {user.fullName}</p>
+  {
+      onlineUsers.includes(user._id)
+      ? <span className='text-green-400 text-xs'>
+          Online
+      </span> : <span className='text-neutral-400 text-xs'> Offline</span>
+  }
 
                  </div>
-                 {unseenMessages[user._id] >0 && <p className='absolute top-4 right-4 text-xs
-                  h-5 w-5 flex justify-center items-center rounded-full
-                bg-cyan-500/70'> {unseenMessages[user._id]} </p>}
+              </div>
+
+              <div className='flex items-center gap-3'>
+                  {unseenMessages[user._id] >0 && <p className='text-xs
+                    h-5 w-5 flex justify-center items-center rounded-full
+                  bg-cyan-500/70'> {unseenMessages[user._id]} </p>}
+                  
+                  {selectedUser?._id === user._id && (
+                     <button onClick={(e) => { e.stopPropagation(); hideUserFromFeed(user._id); }} className='p-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-colors' title="Delete user from feed">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                     </button>
+                  )}
+              </div>
             </div>
             
 
