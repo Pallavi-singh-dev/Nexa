@@ -1,11 +1,169 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
 @import "tailwindcss";
 
+@theme {
+  /* Futuristic purple & deep indigo palette */
+  --color-cyan-400: #f472b6;
+  --color-cyan-500: #d946ef;
+  --color-cyan-600: #a855f7;
+  --color-cyan-700: #7c3aed;
+  --color-cyan-900: #1e1b4b;
+  --color-teal-400: #ec4899;
+  
+  --color-gray-500: rgba(168, 85, 247, 0.4);
+  --color-gray-600: rgba(168, 85, 247, 0.3);
+  --color-stone-500: rgba(168, 85, 247, 0.3);
+  --color-neutral-400: #c084fc;
+}
 
-*{
+* {
   font-family: "Outfit", sans-serif;
 }
 
-::-webkit-scrollbar{
-  display:none;
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Global transitions for interactive elements */
+button, input, textarea, a, .cursor-pointer {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Stunning Neon Background Override with glowing purple grid pattern */
+div[style*="tech_cyan_bg"],
+div.bg-cover.bg-center.h-screen {
+  background-image: 
+    linear-gradient(rgba(217, 70, 239, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 70, 239, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 30%, #1a0b36 0%, #030014 65%, #020008 100%) !important;
+  background-size: 50px 50px, 50px 50px, 100% 100% !important;
+  background-color: #030014 !important;
+}
+
+/* Logo filtering to neon purple/magenta */
+img[src*="logo"],
+img[alt*="logo"],
+.max-w-16,
+.max-w-10,
+.w-16 {
+  filter: hue-rotate(120deg) saturate(2) drop-shadow(0 0 10px rgba(217, 70, 239, 0.6)) !important;
+  display: inline-block;
+}
+
+
+/* Beautiful glassmorphism card styling for Chat frame & login forms */
+div.backdrop-blur-xl.border-2,
+form.border-2 {
+  background: rgba(10, 6, 22, 0.6) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 
+              0 0 50px rgba(168, 85, 247, 0.2), 
+              inset 0 0 20px rgba(168, 85, 247, 0.05) !important;
+  backdrop-filter: blur(25px) !important;
+}
+
+/* Sidebar and Right sidebar background overlay overrides */
+.bg-\[\#818582\]\/10 {
+  background-color: rgba(12, 8, 28, 0.45) !important;
+  border-right: 1px solid rgba(168, 85, 247, 0.15) !important;
+  border-left: 1px solid rgba(168, 85, 247, 0.15) !important;
+}
+
+/* Chat dropdown menu */
+.bg-\[\#282142\] {
+  background: rgba(15, 10, 30, 0.95) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Chat text inputs and login inputs text override */
+input[type="text"]:not(.bg-transparent), 
+input[type="email"], 
+input[type="password"], 
+textarea {
+  color: #ffffff !important;
+  background-color: rgba(15, 10, 30, 0.75) !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+
+input:focus, textarea:focus {
+  border-color: #d946ef !important;
+  box-shadow: 0 0 8px rgba(217, 70, 239, 0.4) !important;
+  outline: none !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Chrome autofill background override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #0d081e inset !important;
+  box-shadow: 0 0 0px 1000px #0d081e inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Search inputs and message input inside custom wrappers */
+.bg-cyan-900\/40 input,
+.bg-cyan-900\/30 input {
+  background-color: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+/* Sent & Received Message Bubbles customization based on tailwind utility structures */
+/* Sent messages (usually has rounded-br-none) */
+.rounded-br-none {
+  background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%) !important;
+  box-shadow: 0 4px 15px rgba(217, 70, 239, 0.35) !important;
+}
+
+/* Received messages (usually has rounded-bl-none) */
+.rounded-bl-none {
+  background-color: rgba(30, 27, 75, 0.8) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Active user in sidebar selection list */
+.bg-\[\#282142\]\/50 {
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.25) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
+  border-left: 4px solid #d946ef !important;
+  box-shadow: inset 4px 0 10px rgba(217, 70, 239, 0.15) !important;
+}
+
+/* Subtitle and header links */
+span.tracking-widest {
+  background: linear-gradient(135deg, #d946ef 0%, #a855f7 50%, #8b5cf6 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: 0 0 20px rgba(217, 70, 239, 0.2) !important;
+}
+
+/* Custom form buttons & gradient backgrounds */
+button[type="submit"],
+.from-teal-400 {
+  background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%) !important;
+  box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4) !important;
+}
+
+button[type="submit"]:hover,
+.from-teal-400:hover {
+  box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6) !important;
+  transform: translateY(-1.5px);
+}
+
+/* Accent colors for checkboxes & inputs */
+input[type="checkbox"] {
+  accent-color: #d946ef !important;
+}
+
+/* Profile details wrapper cards styling */
+.backdrop-blur-2xl.border-2 {
+  background: rgba(10, 6, 22, 0.65) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
 }
