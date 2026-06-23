@@ -73,6 +73,23 @@ export const ChatProvider = ({children})=>{
         }
     }
 
+    const reactToMessage = async (messageId, emoji) => {
+        try {
+            const { data } = await axios.put(`/api/messages/react/${messageId}`, { emoji });
+            if (data.success) {
+                setMessages((prevMessages) =>
+                    prevMessages.map((msg) =>
+                        msg._id === messageId ? { ...msg, reactions: data.reactions } : msg
+                    )
+                );
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
     // function to subsribe to messages for selected user
 const subscribeToMessages =  () =>{
     if(!socket) return;
@@ -88,13 +105,24 @@ const subscribeToMessages =  () =>{
             })
             )
         }
-    })
+    });
+
+    socket.on("messageReaction", ({ messageId, reactions }) => {
+        setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+                msg._id === messageId ? { ...msg, reactions } : msg
+            )
+        );
+    });
 }
 
 // function to unsubscribe from messages 
     
 const unsubscribeFromMessages = () => {
-    if(socket) socket.off("newMessage");
+    if(socket) {
+        socket.off("newMessage");
+        socket.off("messageReaction");
+    }
 }
 
 
@@ -106,7 +134,7 @@ useEffect(()=>{
 
     const value = {
         messages,users,selectedUser,getUsers,getMessages,sendMessage,setSelectedUser,
-        unseenMessages,setUnseenMessages,hideUserFromFeed
+        unseenMessages,setUnseenMessages,hideUserFromFeed,reactToMessage
     }
     return (<ChatContext.Provider value={value}>
          {children}
