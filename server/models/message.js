@@ -6,7 +6,17 @@ import mongoose from "mongoose";
     receiverId:{type:mongoose.Schema.Types.ObjectId, ref:"User",required:true},
     text:{type:String},
     image:{type:String},
-    seen:{type:Boolean,default:false}
+    audio:{type:String},
+    seen:{type:Boolean,default:false},
+    reactions: {
+       type: [
+          {
+             userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+             emoji: { type: String, required: true }
+          }
+       ],
+       default: []
+    }
  },{timestamps:true});
 
 

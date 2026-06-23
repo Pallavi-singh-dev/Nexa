@@ -89,7 +89,7 @@ export const markMessageAsSeen = async (req,res) =>{
 
 export const sendMessage = async (req,res) => {
     try{
-       const {text, image} = req.body;
+       const {text, image, audio} = req.body;
 
        const receiverId = req.params.id;
        const senderId = req.user._id;
@@ -100,9 +100,16 @@ export const sendMessage = async (req,res) => {
            imageUrl = uploadResponse.secure_url
        }
 
+       let audioUrl;
+       if(audio) {
+           const uploadResponse = await cloudinary.uploader.upload(audio, { resource_type: "auto" });
+           audioUrl = uploadResponse.secure_url;
+       }
+
         const newMessage = await Message.create({
             senderId , receiverId , text , 
-            image : imageUrl
+            image : imageUrl,
+            audio : audioUrl
         })
 
         // Emit the new message to the receiver's socket 
@@ -140,6 +147,66 @@ export const hideUser = async (req, res) => {
             success: true,
             user: updatedUser
         });
+    } catch (error) {
+        console.log(error.message);
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+}
+
+// React to a message
+export const reactToMessage = async (req, res) => {
+    try {
+        const { id: messageId } = req.params;
+        const { emoji } = req.body;
+        const userId = req.user._id;
+
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.json({ success: false, message: "Message not found" });
+        }
+
+        // Find existing reaction from this user
+        const existingReactionIndex = message.reactions.findIndex(
+            (r) => r.userId.toString() === userId.toString()
+        );
+
+        if (existingReactionIndex > -1) {
+            if (message.reactions[existingReactionIndex].emoji === emoji) {
+                // If same emoji, remove it (toggle off)
+                message.reactions.splice(existingReactionIndex, 1);
+            } else {
+                // If different emoji, update it
+                message.reactions[existingReactionIndex].emoji = emoji;
+            }
+        } else {
+            // Add new reaction
+            message.reactions.push({ userId, emoji });
+        }
+
+        await message.save();
+
+        // Emit the reaction update via socket.io to both sender and receiver
+        const receiverId = message.senderId.toString() === userId.toString() ? message.receiverId : message.senderId;
+        const receiverSocketId = userSocketMap[receiverId];
+        const senderSocketId = userSocketMap[userId];
+
+        const socketPayload = { messageId, reactions: message.reactions };
+
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("messageReaction", socketPayload);
+        }
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("messageReaction", socketPayload);
+        }
+
+        res.json({
+            success: true,
+            reactions: message.reactions
+        });
+
     } catch (error) {
         console.log(error.message);
         res.json({
