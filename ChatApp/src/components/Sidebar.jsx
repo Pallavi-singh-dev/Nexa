@@ -3,12 +3,15 @@ import assets from '../assets/assets'
 import {useNavigate} from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ChatContext } from '../context/ChatContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 
 const Sidebar = () => {
      const {getUsers,users,selectedUser,setSelectedUser,unseenMessages,setUnseenMessages,hideUserFromFeed}=useContext(ChatContext)
     const {logout,onlineUsers,authUser} = useContext(AuthContext)
-      const[input,setInput]=useState(false);
+    const {isLightMode, setIsLightMode} = useContext(ThemeContext)
+    const[input,setInput]=useState(false);
+    const[showThemeDialog, setShowThemeDialog] = useState(false);
 // for new page
     const navigate = useNavigate();
 
@@ -23,7 +26,7 @@ const Sidebar = () => {
     overflow-y-scroll text-white ${selectedUser ? "max-md:hidden":''}`}> 
         <div className='pb-5'>
             <div className='flex justify-between items-center w-full'>
-               <div className='flex items-center gap-2'>
+               <div className='flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity' onClick={() => setShowThemeDialog(true)}>
                  <img src={assets.logo_icon} alt="logo" className='max-w-10'/>
                  <span className='text-2xl font-bold text-white tracking-widest'>Nexa</span>
                </div>
@@ -92,6 +95,43 @@ const Sidebar = () => {
           ))}
        
         </div>
+        
+        {/* Slide-out Theme Settings Dialog */}
+        <div className={`fixed inset-y-0 left-0 w-72 bg-[#0d081e]/95 backdrop-blur-xl border-r border-purple-500/30 z-[60] transform transition-transform duration-300 ease-in-out ${showThemeDialog ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-bold text-white">Settings</h2>
+              <button onClick={() => setShowThemeDialog(false)} className="text-gray-400 hover:text-white cursor-pointer p-2 rounded-full hover:bg-white/5 transition-colors focus:outline-none">
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-6 flex-1">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                <div>
+                  <h3 className="text-white font-medium">Theme</h3>
+                  <p className="text-xs text-gray-400 mt-1">{isLightMode ? 'Light Mode' : 'Dark Mode'}</p>
+                </div>
+                
+                {/* Toggle Switch */}
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={isLightMode} 
+                    onChange={() => setIsLightMode(!isLightMode)}
+                  />
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-pink-500 peer-checked:to-orange-400"></div>
+                </label>
+              </div>
+            </div>
+            
+            <div className="mt-auto">
+              <p className="text-center text-xs text-gray-500">Nexa v1.0</p>
+            </div>
+          </div>
+        </div>
+        
         </div>
   )
 }

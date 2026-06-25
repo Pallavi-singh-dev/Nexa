@@ -8,6 +8,132 @@ import toast from 'react-hot-toast'
 
 
 
+const AudioBubble = ({ audioUrl, isSender, selectedUser, onDoubleClick, onTouchStart, onClick }) => {
+    const audioRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const handleTimeUpdate = () => {
+            if (audio.duration) {
+                setProgress((audio.currentTime / audio.duration) * 100);
+            }
+            setCurrentTime(audio.currentTime);
+        };
+
+        const handleLoadedMetadata = () => {
+            setDuration(audio.duration);
+        };
+
+        const handleEnded = () => {
+            setIsPlaying(false);
+            setProgress(0);
+            setCurrentTime(0);
+        };
+
+        audio.addEventListener("timeupdate", handleTimeUpdate);
+        audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+        audio.addEventListener("ended", handleEnded);
+
+        if (audio.duration) {
+            setDuration(audio.duration);
+        }
+
+        return () => {
+            audio.removeEventListener("timeupdate", handleTimeUpdate);
+            audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+            audio.removeEventListener("ended", handleEnded);
+        };
+    }, [audioUrl]);
+
+    const togglePlay = (e) => {
+        e.stopPropagation();
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (isPlaying) {
+            audio.pause();
+            setIsPlaying(false);
+        } else {
+            audio.play();
+            setIsPlaying(true);
+        }
+    };
+
+    const handleProgressClick = (e) => {
+        e.stopPropagation();
+        const audio = audioRef.current;
+        if (!audio || !duration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+        const newTime = (clickX / width) * duration;
+        audio.currentTime = newTime;
+        setProgress((newTime / duration) * 100);
+        setCurrentTime(newTime);
+    };
+
+    const formatTime = (time) => {
+        if (isNaN(time) || time === Infinity) return "0:00";
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    };
+
+    return (
+        <div 
+            onDoubleClick={onDoubleClick}
+            onTouchStart={onTouchStart}
+            onClick={onClick}
+            className={`flex items-center gap-3 p-3 bg-[#130a24]/85 border border-purple-500/30 rounded-2xl max-w-[245px] shadow-lg relative group overflow-hidden cursor-pointer ${isSender ? 'rounded-br-none' : 'rounded-bl-none'}`}
+        >
+            <audio ref={audioRef} src={audioUrl} preload="metadata" />
+            
+            {/* Play/Pause Button */}
+            <button 
+                onClick={togglePlay} 
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-tr from-pink-500 to-orange-400 text-white cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md focus:outline-none z-10"
+            >
+                {isPlaying ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="translate-x-[1px]"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                )}
+            </button>
+
+            {/* Custom Soundwaves */}
+            <div className="flex-1 flex flex-col gap-0.5 z-10" onClick={handleProgressClick}>
+                <div className="flex items-end gap-[2px] h-6 px-1 justify-center">
+                    {[6, 12, 18, 10, 16, 22, 14, 8, 12, 20, 10, 14, 18, 8, 12, 6].map((h, i) => {
+                        const isPast = progress > (i / 16) * 100;
+                        return (
+                            <div 
+                                key={i} 
+                                className={`w-[2.5px] rounded-full transition-all duration-300 ${
+                                    isPast ? 'bg-[#d946ef]' : 'bg-gray-600/80'
+                                }`} 
+                                style={{ 
+                                    height: `${h}px`,
+                                    animation: isPlaying && isPast ? 'wave-beat 1.0s infinite ease-in-out' : 'none',
+                                    animationDelay: `${i * 0.05}s`
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+                <div className="flex justify-between text-[9px] text-gray-400 px-1 font-light">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ChatContainer= () => {
 
   const {messages,selectedUser,setSelectedUser,sendMessage,getMessages,reactToMessage} = useContext(ChatContext)
@@ -19,6 +145,7 @@ const ChatContainer= () => {
   const [input,setInput] = useState('');
   const [activeMessageReactionsId, setActiveMessageReactionsId] = useState(null);
   const lastTapRef = useRef(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const handleDoubleTap = (msgId) => {
       const now = Date.now();
@@ -36,6 +163,22 @@ const ChatContainer= () => {
 
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
+  
+  const canvasRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+
+  useEffect(() => {
+      return () => {
+          if (animationFrameRef.current) {
+              cancelAnimationFrame(animationFrameRef.current);
+          }
+          if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+              audioCtxRef.current.close();
+          }
+      };
+  }, []);
 
   const startRecording = async () => {
       try {
@@ -61,12 +204,80 @@ const ChatContainer= () => {
           recorder.start();
           setMediaRecorder(recorder);
           setIsRecording(true);
+
+          // Setup real-time visualization canvas with slight delay to ensure DOM is rendered
+          setTimeout(() => {
+              try {
+                  const canvas = canvasRef.current;
+                  if (canvas) {
+                      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                      const analyser = audioCtx.createAnalyser();
+                      analyser.fftSize = 64;
+                      const source = audioCtx.createMediaStreamSource(stream);
+                      source.connect(analyser);
+                      
+                      audioCtxRef.current = audioCtx;
+                      analyserRef.current = analyser;
+
+                      const ctx = canvas.getContext("2d");
+                      const bufferLength = analyser.frequencyBinCount;
+                      const dataArray = new Uint8Array(bufferLength);
+                      
+                      const draw = () => {
+                          if (!canvasRef.current) return;
+                          animationFrameRef.current = requestAnimationFrame(draw);
+                          
+                          analyser.getByteFrequencyData(dataArray);
+                          ctx.clearRect(0, 0, canvas.width, canvas.height);
+                          
+                          const barWidth = (canvas.width / bufferLength) * 1.5;
+                          let barHeight;
+                          let x = 0;
+                          
+                          for (let i = 0; i < bufferLength; i++) {
+                              barHeight = (dataArray[i] / 255) * canvas.height * 0.95;
+                              if (barHeight < 3) barHeight = 3;
+                              
+                              const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+                              grad.addColorStop(0, '#7c3aed'); // purple
+                              grad.addColorStop(0.4, '#d946ef'); // pink
+                              grad.addColorStop(0.8, '#f472b6'); // light pink
+                              grad.addColorStop(1, '#67e8f9'); // cyan
+                              
+                              ctx.fillStyle = grad;
+                              const y = (canvas.height - barHeight) / 2;
+                              
+                              ctx.beginPath();
+                              if (ctx.roundRect) {
+                                  ctx.roundRect(x, y, barWidth - 2.5, barHeight, 2);
+                              } else {
+                                  ctx.rect(x, y, barWidth - 2.5, barHeight);
+                              }
+                              ctx.fill();
+                              
+                              x += barWidth;
+                          }
+                      };
+                      draw();
+                  }
+              } catch (audioErr) {
+                  console.error("Audio Context setup error:", audioErr);
+              }
+          }, 100);
+
       } catch (error) {
           toast.error("Unable to access microphone: " + error.message);
       }
   };
 
   const discardRecording = () => {
+      if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+          audioCtxRef.current.close();
+      }
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
           mediaRecorder.onstop = () => {
               mediaRecorder.stream.getTracks().forEach((track) => track.stop());
@@ -78,6 +289,13 @@ const ChatContainer= () => {
   };
 
   const stopAndSendRecording = () => {
+      if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+          audioCtxRef.current.close();
+      }
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
           mediaRecorder.stop();
       }
@@ -234,14 +452,14 @@ pb-6'>
             onClick={() => setActiveMessageReactionsId(activeMessageReactionsId === msg._id ? null : msg._id)}
           />
         ) : msg.audio ? (
-          <div 
-            className="p-2 border border-purple-500/20 bg-[#160c2c]/75 rounded-lg max-w-[240px] cursor-pointer"
+          <AudioBubble 
+            audioUrl={msg.audio} 
+            isSender={msg.senderId === authUser._id} 
+            selectedUser={selectedUser} 
             onDoubleClick={() => reactToMessage(msg._id, "❤️")}
             onTouchStart={() => handleDoubleTap(msg._id)}
             onClick={() => setActiveMessageReactionsId(activeMessageReactionsId === msg._id ? null : msg._id)}
-          >
-            <audio controls src={msg.audio} className="w-full h-8 outline-none" />
-          </div>
+          />
         ) : (
           <p 
             className={`p-2.5 max-w-[200px] md:text-sm font-light rounded-lg break-all bg-cyan-700/60 text-white cursor-pointer select-none ${
@@ -311,46 +529,103 @@ pb-6'>
 </div>
 </div>
 
-<div className='absolute bottom-0 right-0 left-0 flex items-center gap-3 p-3'>
-<div className='flex-1 flex items-center bg-cyan-900/40 backdrop-blur-md border border-cyan-500/30 px-3 rounded-full'> 
-  {isRecording ? (
-    <div className="flex-1 flex items-center justify-between py-2 px-1">
-      <div className="flex items-center gap-2 text-red-500 animate-pulse text-sm">
-        <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-        Recording Voice...
+<div className='absolute bottom-0 right-0 left-0 flex items-center gap-3 p-3 z-50'>
+<div className='flex-1 flex items-center bg-cyan-900/40 backdrop-blur-md border border-cyan-500/30 px-3 rounded-full relative'> 
+  <button onClick={openCamera} className="mr-2 cursor-pointer focus:outline-none text-gray-400 hover:text-purple-400 transition-colors p-1" title="Open camera">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+  </button>
+  <input onChange={(e)=> setInput(e.target.value)} value={input} 
+  onKeyDown={(e)=>e.key === "Enter"? handleSendMessage(e):null}type="text"  placeholder="Send a message" className='flex-1 
+  text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-400 bg-transparent'/>
+  <input onChange={handleSendImage} type="file" id='image' accept='image/png, image/jpeg' hidden />
+  <label htmlFor="image"> 
+    <img src={assets.gallery_icon} alt="" className="w-5 mr-2 cursor-pointer"/>
+  </label>
+  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="mr-2 cursor-pointer focus:outline-none text-gray-400 hover:text-purple-400 transition-colors p-1" title="Emojis">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+  </button>
+  <button onClick={startRecording} className="mr-1 cursor-pointer focus:outline-none text-gray-400 hover:text-purple-400 transition-colors p-1" title="Record voice">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+  </button>
+  
+  {/* Emoji Picker Popup */}
+  {showEmojiPicker && (
+    <div className="absolute bottom-14 right-10 z-50 bg-[#0d081e]/95 border border-purple-500/40 rounded-2xl p-3 shadow-2xl backdrop-blur-md animate-bounce-subtle flex flex-col gap-2 w-64 max-h-[250px]">
+      <div className="flex justify-between items-center px-1 border-b border-white/10 pb-2">
+        <span className="text-white text-sm font-medium">Emojis</span>
+        <button onClick={() => setShowEmojiPicker(false)} className="text-gray-400 hover:text-white cursor-pointer focus:outline-none">✕</button>
       </div>
-      <div className="flex items-center gap-3">
-        {/* Discard/Delete Recording */}
-        <button onClick={discardRecording} className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1.5 focus:outline-none" title="Discard recording">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      <div className="flex-1 overflow-y-auto grid grid-cols-6 gap-2 p-1">
+        {[
+          "😀", "😂", "🥺", "🥰", "❤️", "🔥", "✨", "😍", "🙏", "😊",
+          "😭", "💀", "👍", "🤣", "💕", "💯", "🎉", "😎", "😔", "😘",
+          "😁", "🙌", "😌", "😅", "✌️", "😜", "😉", "👀", "💔", "😏",
+          "😇", "🤭", "🙄", "🤩", "🤗", "🤔", "💪", "😋", "👏", "💋",
+          "🥱", "😤", "🤤", "😡", "🥳", "👻", "🤡", "👽", "💩", "💤"
+        ].map(emoji => (
+          <button 
+            key={emoji} 
+            onClick={() => {
+              sendMessage({text: emoji});
+              setShowEmojiPicker(false);
+            }}
+            className="hover:scale-125 transition-transform text-xl cursor-pointer focus:outline-none flex items-center justify-center"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
+<div onClick={handleSendMessage} className='bg-cyan-500 hover:bg-cyan-400 p-3 rounded-full cursor-pointer flex items-center justify-center transition-colors'>
+  <img src={assets.send_button} alt="" className='w-5'/>
+</div>
+
+{/* Voice Recording Modal Popup */}
+{isRecording && (
+  <div className="absolute inset-0 bg-[#030014]/90 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md">
+    <div className="w-full max-w-sm bg-[#0d081e] border border-purple-500/40 rounded-2xl py-3 px-4 flex flex-col items-center gap-2.5 shadow-2xl relative animate-bounce-subtle">
+      <h3 className="text-white text-xs font-medium tracking-wide">Recording Voice...</h3>
+      
+      {/* Visual Ripple and Microphone */}
+      <div className="flex items-center justify-center gap-3 w-full px-1">
+        {/* Glowing Microphone Ripple Container */}
+        <div className="relative flex items-center justify-center mr-2">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-pink-500 to-orange-400 opacity-20 animate-ping"></div>
+          <div className="absolute -inset-2 rounded-full border border-pink-500/30 animate-pulse"></div>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-pink-500 to-orange-400 text-white shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </div>
+        </div>
+
+        {/* Real-time Dynamic Canvas Visualizer */}
+        <div className="flex-1 h-8 border-l border-purple-500/20 pl-3 flex items-center justify-center">
+          <canvas ref={canvasRef} width="160" height="32" className="w-full h-full rounded-md" />
+        </div>
+      </div>
+
+      {/* Control Buttons */}
+      <div className="flex gap-3 w-full justify-center pt-1">
+        {/* Cancel/Discard Button */}
+        <button 
+          onClick={discardRecording} 
+          className="flex-1 py-1.5 bg-neutral-800/80 hover:bg-neutral-700 text-gray-300 hover:text-red-400 rounded-full text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-2 focus:outline-none border border-white/5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Discard
         </button>
-        {/* Send Recording */}
-        <button onClick={stopAndSendRecording} className="text-purple-400 hover:text-purple-300 transition-colors cursor-pointer p-1.5 focus:outline-none" title="Send recording">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+
+        {/* Send Button */}
+        <button 
+          onClick={stopAndSendRecording} 
+          className="flex-1 py-1.5 bg-gradient-to-tr from-pink-500 to-orange-400 hover:brightness-110 text-white rounded-full text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-2 shadow-md focus:outline-none"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send
         </button>
       </div>
     </div>
-  ) : (
-    <>
-      <button onClick={openCamera} className="mr-2 cursor-pointer focus:outline-none text-gray-400 hover:text-purple-400 transition-colors p-1" title="Open camera">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-      </button>
-      <input onChange={(e)=> setInput(e.target.value)} value={input} 
-      onKeyDown={(e)=>e.key === "Enter"? handleSendMessage(e):null}type="text"  placeholder="Send a message" className='flex-1 
-      text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-400 bg-transparent'/>
-      <input onChange={handleSendImage} type="file" id='image' accept='image/png, image/jpeg' hidden />
-      <label htmlFor="image"> 
-        <img src={assets.gallery_icon} alt="" className="w-5 mr-2 cursor-pointer"/>
-      </label>
-      <button onClick={startRecording} className="mr-1 cursor-pointer focus:outline-none text-gray-400 hover:text-purple-400 transition-colors p-1" title="Record voice">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-      </button>
-    </>
-  )}
-</div>
-{!isRecording && (
-  <div onClick={handleSendMessage} className='bg-cyan-500 hover:bg-cyan-400 p-3 rounded-full cursor-pointer flex items-center justify-center transition-colors'>
-    <img src={assets.send_button} alt="" className='w-5'/>
   </div>
 )}
 
